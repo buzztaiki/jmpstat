@@ -27,6 +27,11 @@ public class Main {
             if (poolNames.isEmpty()) {
                 jmpStat.printAllPools();
             } else {
+                if (!jmpStat.hasMemoryPool(poolNames)) {
+                    System.err.println("Invalid pool_names: " + args.get(1));
+                    usage(System.err);
+                    return 1;
+                }
                 long interval = Long.parseLong(args.get(2, "1000"));
                 jmpStat.pollLoop(poolNames, interval);
             }

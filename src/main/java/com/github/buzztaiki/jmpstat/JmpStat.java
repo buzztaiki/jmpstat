@@ -22,6 +22,15 @@ public class JmpStat {
         this.out = out;
     }
 
+    public boolean hasMemoryPool(Set<String> poolNames) throws IOException {
+        for (MemoryPoolMXBean memoryPool : getMemoryPools()) {
+            if (poolNames.contains(memoryPool.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void printAllPools() throws IOException {
         for (MemoryPoolMXBean memoryPool : getMemoryPools()) {
             out.format("%s\t%s%n", memoryPool.getName(), memoryPool.getUsage());
