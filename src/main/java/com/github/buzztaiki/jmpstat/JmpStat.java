@@ -4,14 +4,10 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.RuntimeMXBean;
 import java.lang.management.MemoryUsage;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 import javax.management.MBeanServerConnection;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
 
 public class JmpStat {
     private final MBeanServerConnection server;
@@ -38,14 +34,17 @@ public class JmpStat {
     }
 
     public void pollLoop(Set<String> poolNames, long interval) throws IOException {
-        out.println("pool_name\tinit\tused\tcommitted\tmax");
+        out.println("uptime\tpool_name\tinit\tused\tcommitted\tmax");
+        RuntimeMXBean runtime = getRuntime();
+        Iterable<MemoryPoolMXBean> memoryPools = getMemoryPools();
         for (;;) {
-            for (MemoryPoolMXBean memoryPool : getMemoryPools()) {
+            for (MemoryPoolMXBean memoryPool : memoryPools) {
                 if (!poolNames.contains(memoryPool.getName())) {
                     continue;
                 }
                 MemoryUsage usage = memoryPool.getUsage();
-                out.format("%s\t%d\t%d\t%d\t%d%n",
+                out.format("%.1f\t%s\t%d\t%d\t%d\t%d%n",
+                    runtime.getUptime()/1000.0,
                     memoryPool.getName(),
                     usage.getInit()/1024,
                     usage.getUsed()/1024,
@@ -62,5 +61,9 @@ public class JmpStat {
 
     private Iterable<MemoryPoolMXBean> getMemoryPools() throws IOException {
         return ManagementFactory.getPlatformMXBeans(server, MemoryPoolMXBean.class);
+    }
+
+    private RuntimeMXBean getRuntime() throws IOException {
+        return ManagementFactory.getPlatformMXBean(server, RuntimeMXBean.class);
     }
 }
