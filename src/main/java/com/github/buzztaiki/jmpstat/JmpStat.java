@@ -4,17 +4,18 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
-import java.util.ArrayList;
-import java.util.List;
+import java.lang.management.MemoryUsage;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import java.lang.management.MemoryUsage;
 
 public class JmpStat {
     private void usage(PrintStream out) {
-        out.println("Usage: jccstat <host>:<port> [<pool_names> <interval>]");
+        out.println("Usage: jmpstat <host>:<port> [<pool_names> <interval>]");
     }
 
     private int run(Args args) throws Exception {
@@ -23,26 +24,51 @@ public class JmpStat {
             usage(System.err);
             return 1;
         }
-        long interval = Long.parseLong(args.get(1, "0"));
-        if (interval <= 0) {
-            usage(System.err);
-            return 1;
-        }
-
         try (JMXConnector jmxConn = JMXConnectorFactory.connect(getUrl(conn))) {
             MBeanServerConnection server = jmxConn.getMBeanServerConnection();
-            System.out.println("pool_name\tinit\tused\tcommitted\tmax");
-            for (;;) {
-                for (MemoryPoolMXBean memoryPool : ManagementFactory.getPlatformMXBeans(server, MemoryPoolMXBean.class)) {
-                    MemoryUsage usage = memoryPool.getUsage();
-                    System.out.format("%s\t%d\t%d\t%d\t%d%n",
-                        memoryPool.getName(),
-                        usage.getInit()/1024,
-                        usage.getUsed()/1024,
-                        usage.getCommitted()/1024,
-                        usage.getMax()/1024);
+            Set<String> poolNames = poolNames(args.get(1, ""));
+            System.out.println(poolNames.size());
+            if (poolNames.isEmpty()) {
+                printAllPools(server);
+            } else {
+                long interval = Long.parseLong(args.get(2, "1000"));
+                pollLoop(server, poolNames, interval);
+            }
+            return 0;
+        }
+    }
+
+    private Set<String> poolNames(String arg) {
+        Set<String> xs = new HashSet<>(Arrays.asList(arg.split(" *, *", 0)));
+        xs.remove("");
+        return xs;
+    }
+
+    private void printAllPools(MBeanServerConnection server) throws IOException {
+        for (MemoryPoolMXBean memoryPool : ManagementFactory.getPlatformMXBeans(server, MemoryPoolMXBean.class)) {
+            System.out.format("%s\t%s%n", memoryPool.getName(), memoryPool.getUsage());
+        }
+    }
+
+    private void pollLoop(MBeanServerConnection server, Set<String> poolNames, long interval) throws IOException {
+        System.out.println("pool_name\tinit\tused\tcommitted\tmax");
+        for (;;) {
+            for (MemoryPoolMXBean memoryPool : ManagementFactory.getPlatformMXBeans(server, MemoryPoolMXBean.class)) {
+                if (!poolNames.contains(memoryPool.getName())) {
+                    continue;
                 }
+                MemoryUsage usage = memoryPool.getUsage();
+                System.out.format("%s\t%d\t%d\t%d\t%d%n",
+                    memoryPool.getName(),
+                    usage.getInit()/1024,
+                    usage.getUsed()/1024,
+                    usage.getCommitted()/1024,
+                    usage.getMax()/1024);
+            }
+            try {
                 Thread.sleep(interval);
+            } catch (InterruptedException e) {
+                return;
             }
         }
     }
