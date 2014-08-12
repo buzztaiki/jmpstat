@@ -11,10 +11,15 @@ repositories {
   mavenCentral()
 }
 
+dependencies {
+  compile files("${System.properties['java.home']}/../lib/tools.jar")
+  compile files("${System.properties['java.home']}/../lib/jconsole.jar")
+}
+
 jar {
   manifest {
     manifest.attributes(
-      'Main-Class': 'com.github.buzztaiki.jmpstat.Main'
+      'Main-Class': 'com.github.buzztaiki.jmpstat.Bootstrap'
     )
   }
 }

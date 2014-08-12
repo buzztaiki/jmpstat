@@ -5,10 +5,10 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import sun.tools.jconsole.LocalVirtualMachine;
 
 public class Main {
     private void usage(PrintStream out) {
@@ -16,12 +16,12 @@ public class Main {
     }
 
     private int run(Args args) throws Exception {
-        String conn = args.get(0);
-        if (conn == null) {
+        String addr = args.get(0);
+        if (addr == null) {
             usage(System.err);
             return 1;
         }
-        try (JMXConnector jmxConn = JMXConnectorFactory.connect(getUrl(conn))) {
+        try (JMXConnector jmxConn = JMXConnectorFactory.connect(getUrl(addr))) {
             JmpStat jmpStat = new JmpStat(jmxConn.getMBeanServerConnection(), System.out);
             Set<String> poolNames = poolNames(args.get(1, ""));
             if (poolNames.isEmpty()) {
@@ -45,27 +45,24 @@ public class Main {
         return xs;
     }
 
-    private JMXServiceURL getUrl(String conn) throws IOException {
+    private JMXServiceURL getUrl(String addr) throws IOException {
         try {
-            return getPidUrl(Integer.parseInt(conn));
+            return getPidUrl(Integer.parseInt(addr));
         } catch (NumberFormatException e) {
-            return new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + conn + "/jmxrmi");
+            return new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + addr + "/jmxrmi");
         }
     }
 
     private JMXServiceURL getPidUrl(int pid) throws IOException {
-/*
         LocalVirtualMachine vm = LocalVirtualMachine.getLocalVirtualMachine(pid);
         if (vm.isManageable()) {
-            return new JMXServiceURL(vm.toUrl());
+            return new JMXServiceURL(vm.connectorAddress());
         }
         vm.startManagementAgent();
         if (vm.isManageable()) {
-            return new JMXServiceURL(vm.toUrl());
+            return new JMXServiceURL(vm.connectorAddress());
         }
         throw new IOException("Could not start agent for " + pid);
-*/
-        throw new UnsupportedOperationException("getPidUrl");
     }
 
     public static void main(String[] args) throws Exception {
