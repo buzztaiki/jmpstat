@@ -4,7 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class Bootstrap {
     public static void main(String[] args) throws Throwable {
-        ClassLoader cl = BootstrapClassLoader.of("com.github.buzztaiki.jmpstat.");
+        ClassLoader cl = BootstrapClassLoader.get();
         Class<?> mainClass = cl.loadClass("com.github.buzztaiki.jmpstat.Main");
         try {
             mainClass.getMethod("main", String[].class).invoke(mainClass, new Object[]{args});

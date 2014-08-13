@@ -6,20 +6,16 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class BootstrapClassLoader extends URLClassLoader {
-    private final String packageName;
-    private BootstrapClassLoader(String packageName, URL[] urls) {
+    private BootstrapClassLoader(URL[] urls) {
         super(urls);
-        this.packageName = packageName;
     }
 
-    public static BootstrapClassLoader of(final String main) throws IOException {
+    public static BootstrapClassLoader get() throws IOException {
         Path libDir = Paths.get(System.getProperty("java.home"), "../lib").toRealPath();
         List<Path> jars = Arrays.asList(
             Paths.get(System.getProperty("java.class.path")).toRealPath(),
@@ -37,29 +33,18 @@ public class BootstrapClassLoader extends URLClassLoader {
             urls.add(jar.toUri().toURL());
         }
 
-        return AccessController.doPrivileged(new PrivilegedAction<BootstrapClassLoader>() {
-            @Override
-            public BootstrapClassLoader run() {
-                return new BootstrapClassLoader(main, urls.toArray(new URL[0]));
-            }
-        });
+        return new BootstrapClassLoader(urls.toArray(new URL[0]));
     }
 
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        if (!name.startsWith(packageName)) {
-            return super.loadClass(name, resolve);
-        }
-
-        // load class from self instead of parent loader
         Class<?> klass = findLoadedClass(name);
-        if (klass != null) {
-            return klass;
-        }
-
-        klass = findClass(name);
         if (klass == null) {
-            return super.loadClass(name, resolve);
+            try {
+                klass = findClass(name);
+            } catch (ClassNotFoundException e) {
+                klass = getParent().loadClass(name);
+            }
         }
 
         if (resolve) {
@@ -67,5 +52,4 @@ public class BootstrapClassLoader extends URLClassLoader {
         }
         return klass;
     }
-
 }

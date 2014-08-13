@@ -12,6 +12,7 @@ import sun.tools.jconsole.LocalVirtualMachine;
 
 public class Main {
     private void usage(PrintStream out) {
+        out.println("Usage: jmpstat <pid> [<pool_names> <interval>]");
         out.println("Usage: jmpstat <host>:<port> [<pool_names> <interval>]");
     }
 
